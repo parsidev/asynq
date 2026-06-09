@@ -31,13 +31,15 @@ const DefaultQueueName = "default"
 // DefaultQueue is the redis key for the default queue.
 var DefaultQueue = PendingKey(DefaultQueueName)
 
+const defaultRedisNamespace = "asynq"
+
 // Global Redis keys.
 const (
-	AllServers    = "asynq:servers"    // ZSET
-	AllWorkers    = "asynq:workers"    // ZSET
-	AllSchedulers = "asynq:schedulers" // ZSET
-	AllQueues     = "asynq:queues"     // SET
-	CancelChannel = "asynq:cancel"     // PubSub channel
+	AllServers    = defaultRedisNamespace + ":servers"    // ZSET
+	AllWorkers    = defaultRedisNamespace + ":workers"    // ZSET
+	AllSchedulers = defaultRedisNamespace + ":schedulers" // ZSET
+	AllQueues     = defaultRedisNamespace + ":queues"     // SET
+	CancelChannel = defaultRedisNamespace + ":cancel"     // PubSub channel
 )
 
 // TaskState denotes the state of a task.
@@ -104,7 +106,11 @@ func ValidateQueueName(qname string) error {
 
 // QueueKeyPrefix returns a prefix for all keys in the given queue.
 func QueueKeyPrefix(qname string) string {
-	return "asynq:{" + qname + "}:"
+	return QueueKeyPrefixWithPrefix("", qname)
+}
+
+func QueueKeyPrefixWithPrefix(prefix, qname string) string {
+	return redisNamespace(prefix) + ":{" + qname + "}:"
 }
 
 // TaskKeyPrefix returns a prefix for task key.
@@ -112,9 +118,17 @@ func TaskKeyPrefix(qname string) string {
 	return QueueKeyPrefix(qname) + "t:"
 }
 
+func TaskKeyPrefixWithPrefix(prefix, qname string) string {
+	return QueueKeyPrefixWithPrefix(prefix, qname) + "t:"
+}
+
 // TaskKey returns a redis key for the given task message.
 func TaskKey(qname, id string) string {
 	return TaskKeyPrefix(qname) + id
+}
+
+func TaskKeyWithPrefix(prefix, qname, id string) string {
+	return TaskKeyPrefixWithPrefix(prefix, qname) + id
 }
 
 // PendingKey returns a redis key for the given queue name.
@@ -122,9 +136,17 @@ func PendingKey(qname string) string {
 	return QueueKeyPrefix(qname) + "pending"
 }
 
+func PendingKeyWithPrefix(prefix, qname string) string {
+	return QueueKeyPrefixWithPrefix(prefix, qname) + "pending"
+}
+
 // ActiveKey returns a redis key for the active tasks.
 func ActiveKey(qname string) string {
 	return QueueKeyPrefix(qname) + "active"
+}
+
+func ActiveKeyWithPrefix(prefix, qname string) string {
+	return QueueKeyPrefixWithPrefix(prefix, qname) + "active"
 }
 
 // ScheduledKey returns a redis key for the scheduled tasks.
@@ -132,9 +154,17 @@ func ScheduledKey(qname string) string {
 	return QueueKeyPrefix(qname) + "scheduled"
 }
 
+func ScheduledKeyWithPrefix(prefix, qname string) string {
+	return QueueKeyPrefixWithPrefix(prefix, qname) + "scheduled"
+}
+
 // RetryKey returns a redis key for the retry tasks.
 func RetryKey(qname string) string {
 	return QueueKeyPrefix(qname) + "retry"
+}
+
+func RetryKeyWithPrefix(prefix, qname string) string {
+	return QueueKeyPrefixWithPrefix(prefix, qname) + "retry"
 }
 
 // ArchivedKey returns a redis key for the archived tasks.
@@ -142,13 +172,25 @@ func ArchivedKey(qname string) string {
 	return QueueKeyPrefix(qname) + "archived"
 }
 
+func ArchivedKeyWithPrefix(prefix, qname string) string {
+	return QueueKeyPrefixWithPrefix(prefix, qname) + "archived"
+}
+
 // LeaseKey returns a redis key for the lease.
 func LeaseKey(qname string) string {
 	return QueueKeyPrefix(qname) + "lease"
 }
 
+func LeaseKeyWithPrefix(prefix, qname string) string {
+	return QueueKeyPrefixWithPrefix(prefix, qname) + "lease"
+}
+
 func CompletedKey(qname string) string {
 	return QueueKeyPrefix(qname) + "completed"
+}
+
+func CompletedKeyWithPrefix(prefix, qname string) string {
+	return QueueKeyPrefixWithPrefix(prefix, qname) + "completed"
 }
 
 // PausedKey returns a redis key to indicate that the given queue is paused.
@@ -156,9 +198,17 @@ func PausedKey(qname string) string {
 	return QueueKeyPrefix(qname) + "paused"
 }
 
+func PausedKeyWithPrefix(prefix, qname string) string {
+	return QueueKeyPrefixWithPrefix(prefix, qname) + "paused"
+}
+
 // ProcessedTotalKey returns a redis key for total processed count for the given queue.
 func ProcessedTotalKey(qname string) string {
 	return QueueKeyPrefix(qname) + "processed"
+}
+
+func ProcessedTotalKeyWithPrefix(prefix, qname string) string {
+	return QueueKeyPrefixWithPrefix(prefix, qname) + "processed"
 }
 
 // FailedTotalKey returns a redis key for total failure count for the given queue.
@@ -166,9 +216,17 @@ func FailedTotalKey(qname string) string {
 	return QueueKeyPrefix(qname) + "failed"
 }
 
+func FailedTotalKeyWithPrefix(prefix, qname string) string {
+	return QueueKeyPrefixWithPrefix(prefix, qname) + "failed"
+}
+
 // ProcessedKey returns a redis key for processed count for the given day for the queue.
 func ProcessedKey(qname string, t time.Time) string {
 	return QueueKeyPrefix(qname) + "processed:" + t.UTC().Format("2006-01-02")
+}
+
+func ProcessedKeyWithPrefix(prefix, qname string, t time.Time) string {
+	return QueueKeyPrefixWithPrefix(prefix, qname) + "processed:" + t.UTC().Format("2006-01-02")
 }
 
 // FailedKey returns a redis key for failure count for the given day for the queue.
@@ -176,33 +234,57 @@ func FailedKey(qname string, t time.Time) string {
 	return QueueKeyPrefix(qname) + "failed:" + t.UTC().Format("2006-01-02")
 }
 
+func FailedKeyWithPrefix(prefix, qname string, t time.Time) string {
+	return QueueKeyPrefixWithPrefix(prefix, qname) + "failed:" + t.UTC().Format("2006-01-02")
+}
+
 // ServerInfoKey returns a redis key for process info.
 func ServerInfoKey(hostname string, pid int, serverID string) string {
-	return fmt.Sprintf("asynq:servers:{%s:%d:%s}", hostname, pid, serverID)
+	return ServerInfoKeyWithPrefix("", hostname, pid, serverID)
+}
+
+func ServerInfoKeyWithPrefix(prefix, hostname string, pid int, serverID string) string {
+	return fmt.Sprintf("%s:servers:{%s:%d:%s}", redisNamespace(prefix), hostname, pid, serverID)
 }
 
 // WorkersKey returns a redis key for the workers given hostname, pid, and server ID.
 func WorkersKey(hostname string, pid int, serverID string) string {
-	return fmt.Sprintf("asynq:workers:{%s:%d:%s}", hostname, pid, serverID)
+	return WorkersKeyWithPrefix("", hostname, pid, serverID)
+}
+
+func WorkersKeyWithPrefix(prefix, hostname string, pid int, serverID string) string {
+	return fmt.Sprintf("%s:workers:{%s:%d:%s}", redisNamespace(prefix), hostname, pid, serverID)
 }
 
 // SchedulerEntriesKey returns a redis key for the scheduler entries given scheduler ID.
 func SchedulerEntriesKey(schedulerID string) string {
-	return "asynq:schedulers:{" + schedulerID + "}"
+	return SchedulerEntriesKeyWithPrefix("", schedulerID)
+}
+
+func SchedulerEntriesKeyWithPrefix(prefix, schedulerID string) string {
+	return redisNamespace(prefix) + ":schedulers:{" + schedulerID + "}"
 }
 
 // SchedulerHistoryKey returns a redis key for the scheduler's history for the given entry.
 func SchedulerHistoryKey(entryID string) string {
-	return "asynq:scheduler_history:" + entryID
+	return SchedulerHistoryKeyWithPrefix("", entryID)
+}
+
+func SchedulerHistoryKeyWithPrefix(prefix, entryID string) string {
+	return redisNamespace(prefix) + ":scheduler_history:" + entryID
 }
 
 // UniqueKey returns a redis key with the given type, payload, and queue name.
 func UniqueKey(qname, tasktype string, payload []byte) string {
+	return UniqueKeyWithPrefix("", qname, tasktype, payload)
+}
+
+func UniqueKeyWithPrefix(prefix, qname, tasktype string, payload []byte) string {
 	if payload == nil {
-		return QueueKeyPrefix(qname) + "unique:" + tasktype + ":"
+		return QueueKeyPrefixWithPrefix(prefix, qname) + "unique:" + tasktype + ":"
 	}
 	checksum := md5.Sum(payload)
-	return QueueKeyPrefix(qname) + "unique:" + tasktype + ":" + hex.EncodeToString(checksum[:])
+	return QueueKeyPrefixWithPrefix(prefix, qname) + "unique:" + tasktype + ":" + hex.EncodeToString(checksum[:])
 }
 
 // GroupKeyPrefix returns a prefix for group key.
@@ -210,9 +292,17 @@ func GroupKeyPrefix(qname string) string {
 	return QueueKeyPrefix(qname) + "g:"
 }
 
+func GroupKeyPrefixWithPrefix(prefix, qname string) string {
+	return QueueKeyPrefixWithPrefix(prefix, qname) + "g:"
+}
+
 // GroupKey returns a redis key used to group tasks belong in the same group.
 func GroupKey(qname, gkey string) string {
 	return GroupKeyPrefix(qname) + gkey
+}
+
+func GroupKeyWithPrefix(prefix, qname, gkey string) string {
+	return GroupKeyPrefixWithPrefix(prefix, qname) + gkey
 }
 
 // AggregationSetKey returns a redis key used for an aggregation set.
@@ -220,15 +310,54 @@ func AggregationSetKey(qname, gname, setID string) string {
 	return GroupKey(qname, gname) + ":" + setID
 }
 
+func AggregationSetKeyWithPrefix(prefix, qname, gname, setID string) string {
+	return GroupKeyWithPrefix(prefix, qname, gname) + ":" + setID
+}
+
 // AllGroups return a redis key used to store all group keys used in a given queue.
 func AllGroups(qname string) string {
 	return QueueKeyPrefix(qname) + "groups"
+}
+
+func AllGroupsWithPrefix(prefix, qname string) string {
+	return QueueKeyPrefixWithPrefix(prefix, qname) + "groups"
 }
 
 // AllAggregationSets returns a redis key used to store all aggregation sets (set of tasks staged to be aggregated)
 // in a given queue.
 func AllAggregationSets(qname string) string {
 	return QueueKeyPrefix(qname) + "aggregation_sets"
+}
+
+func AllAggregationSetsWithPrefix(prefix, qname string) string {
+	return QueueKeyPrefixWithPrefix(prefix, qname) + "aggregation_sets"
+}
+
+func AllQueuesKey(prefix string) string {
+	return redisNamespace(prefix) + ":queues"
+}
+
+func AllServersKey(prefix string) string {
+	return redisNamespace(prefix) + ":servers"
+}
+
+func AllWorkersKey(prefix string) string {
+	return redisNamespace(prefix) + ":workers"
+}
+
+func AllSchedulersKey(prefix string) string {
+	return redisNamespace(prefix) + ":schedulers"
+}
+
+func CancelChannelKey(prefix string) string {
+	return redisNamespace(prefix) + ":cancel"
+}
+
+func redisNamespace(prefix string) string {
+	if prefix == "" {
+		return defaultRedisNamespace
+	}
+	return prefix + ":" + defaultRedisNamespace
 }
 
 // TaskMessage is the internal representation of a task with additional metadata fields.

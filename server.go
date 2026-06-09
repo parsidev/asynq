@@ -299,20 +299,20 @@ type RetryDelayFunc func(n int, e error, t *Task) time.Duration
 // Logger supports logging at various log levels.
 type Logger interface {
 	// Debug logs a message at Debug level.
-	Debug(args ...interface{})
+	Debug(args ...any)
 
 	// Info logs a message at Info level.
-	Info(args ...interface{})
+	Info(args ...any)
 
 	// Warn logs a message at Warning level.
-	Warn(args ...interface{})
+	Warn(args ...any)
 
 	// Error logs a message at Error level.
-	Error(args ...interface{})
+	Error(args ...any)
 
 	// Fatal logs a message at Fatal level
 	// and process will exit with status set to 1.
-	Fatal(args ...interface{})
+	Fatal(args ...any)
 }
 
 // LogLevel represents logging level.
@@ -433,7 +433,7 @@ func NewServer(r RedisConnOpt, cfg Config) *Server {
 	if !ok {
 		panic(fmt.Sprintf("asynq: unsupported RedisConnOpt type %T", r))
 	}
-	server := NewServerFromRedisClient(redisClient, cfg)
+	server := newServerFromRedisClient(redisClient, cfg, redisPrefixFromConnOpt(r))
 	server.sharedConnection = false
 	return server
 }
@@ -442,6 +442,10 @@ func NewServer(r RedisConnOpt, cfg Config) *Server {
 // and server configuration
 // Warning: The underlying redis connection pool will not be closed by Asynq, you are responsible for closing it.
 func NewServerFromRedisClient(c redis.UniversalClient, cfg Config) *Server {
+	return newServerFromRedisClient(c, cfg, "")
+}
+
+func newServerFromRedisClient(c redis.UniversalClient, cfg Config, prefix string) *Server {
 	baseCtxFn := cfg.BaseContext
 	if baseCtxFn == nil {
 		baseCtxFn = context.Background
@@ -503,7 +507,7 @@ func NewServerFromRedisClient(c redis.UniversalClient, cfg Config) *Server {
 	}
 	logger.SetLevel(toInternalLogLevel(loglevel))
 
-	rdb := rdb.NewRDB(c)
+	rdb := rdb.NewRDB(c, prefix)
 	starting := make(chan *workerInfo)
 	finished := make(chan *base.TaskMessage)
 	syncCh := make(chan *syncRequest)

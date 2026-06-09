@@ -222,7 +222,7 @@ func BenchmarkClientWhileServerRunning(b *testing.B) {
 		b.Log("Starting enqueueing")
 		enqueued := 0
 		for enqueued < 100000 {
-			t := NewTask(fmt.Sprintf("enqueued%d", enqueued), h.JSON(map[string]interface{}{"data": enqueued}))
+			t := NewTask(fmt.Sprintf("enqueued%d", enqueued), h.JSON(map[string]any{"data": enqueued}))
 			if _, err := client.Enqueue(t); err != nil {
 				b.Logf("could not enqueue task %d: %v", enqueued, err)
 				continue

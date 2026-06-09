@@ -53,6 +53,24 @@ func TestAllQueues(t *testing.T) {
 	}
 }
 
+func TestAllQueuesWithPrefix(t *testing.T) {
+	r := setup(t)
+	defer r.Close()
+	r.prefix = "tenant1"
+
+	if err := r.client.SAdd(context.Background(), base.AllQueuesKey(r.prefix), "default").Err(); err != nil {
+		t.Fatalf("could not initialize prefixed all queue set: %v", err)
+	}
+
+	got, err := r.AllQueues()
+	if err != nil {
+		t.Fatalf("AllQueues() returned error: %v", err)
+	}
+	if diff := cmp.Diff([]string{"default"}, got, h.SortStringSliceOpt); diff != "" {
+		t.Fatalf("AllQueues() mismatch (-want,+got):\n%s", diff)
+	}
+}
+
 func TestCurrentStats(t *testing.T) {
 	r := setup(t)
 	defer r.Close()
@@ -739,7 +757,7 @@ func TestListPending(t *testing.T) {
 	r := setup(t)
 	defer r.Close()
 
-	m1 := h.NewTaskMessage("send_email", h.JSON(map[string]interface{}{"subject": "hello"}))
+	m1 := h.NewTaskMessage("send_email", h.JSON(map[string]any{"subject": "hello"}))
 	m2 := h.NewTaskMessage("reindex", nil)
 	m3 := h.NewTaskMessageWithQueue("important_notification", nil, "critical")
 	m4 := h.NewTaskMessageWithQueue("minor_notification", nil, "low")
@@ -4266,9 +4284,9 @@ func TestDeleteTaskWithUniqueLock(t *testing.T) {
 	m1 := &base.TaskMessage{
 		ID:        uuid.NewString(),
 		Type:      "email",
-		Payload:   h.JSON(map[string]interface{}{"user_id": json.Number("123")}),
+		Payload:   h.JSON(map[string]any{"user_id": json.Number("123")}),
 		Queue:     base.DefaultQueueName,
-		UniqueKey: base.UniqueKey(base.DefaultQueueName, "email", h.JSON(map[string]interface{}{"user_id": 123})),
+		UniqueKey: base.UniqueKey(base.DefaultQueueName, "email", h.JSON(map[string]any{"user_id": 123})),
 	}
 	t1 := time.Now().Add(3 * time.Hour)
 
@@ -5256,9 +5274,9 @@ func TestListWorkers(t *testing.T) {
 		pid      = 4567
 		serverID = "server123"
 
-		m1 = h.NewTaskMessage("send_email", h.JSON(map[string]interface{}{"user_id": "abc123"}))
-		m2 = h.NewTaskMessage("gen_thumbnail", h.JSON(map[string]interface{}{"path": "some/path/to/image/file"}))
-		m3 = h.NewTaskMessage("reindex", h.JSON(map[string]interface{}{}))
+		m1 = h.NewTaskMessage("send_email", h.JSON(map[string]any{"user_id": "abc123"}))
+		m2 = h.NewTaskMessage("gen_thumbnail", h.JSON(map[string]any{"path": "some/path/to/image/file"}))
+		m3 = h.NewTaskMessage("reindex", h.JSON(map[string]any{}))
 	)
 
 	tests := []struct {
@@ -5341,7 +5359,7 @@ func TestWriteListClearSchedulerEntries(t *testing.T) {
 		{
 			Spec:    "@every 20m",
 			Type:    "bar",
-			Payload: h.JSON(map[string]interface{}{"fiz": "baz"}),
+			Payload: h.JSON(map[string]any{"fiz": "baz"}),
 			Opts:    nil,
 			Next:    now.Add(1 * time.Minute),
 			Prev:    now.Add(-19 * time.Minute),

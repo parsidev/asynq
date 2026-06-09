@@ -32,7 +32,7 @@ func NewInspector(r RedisConnOpt) *Inspector {
 	if !ok {
 		panic(fmt.Sprintf("inspeq: unsupported RedisConnOpt type %T", r))
 	}
-	inspector := NewInspectorFromRedisClient(c)
+	inspector := newInspectorFromRedisClient(c, redisPrefixFromConnOpt(r))
 	inspector.sharedConnection = false
 	return inspector
 }
@@ -40,8 +40,12 @@ func NewInspector(r RedisConnOpt) *Inspector {
 // NewInspectorFromRedisClient returns a new instance of Inspector given a redis.UniversalClient
 // Warning: The underlying redis connection pool will not be closed by Asynq, you are responsible for closing it.
 func NewInspectorFromRedisClient(c redis.UniversalClient) *Inspector {
+	return newInspectorFromRedisClient(c, "")
+}
+
+func newInspectorFromRedisClient(c redis.UniversalClient, prefix string) *Inspector {
 	return &Inspector{
-		rdb:              rdb.NewRDB(c),
+		rdb:              rdb.NewRDB(c, prefix),
 		sharedConnection: true,
 	}
 }
@@ -252,7 +256,7 @@ func (i *Inspector) GetTaskInfo(queue, id string) (*TaskInfo, error) {
 }
 
 // ListOption specifies behavior of list operation.
-type ListOption interface{}
+type ListOption any
 
 // Internal list option representations.
 type (

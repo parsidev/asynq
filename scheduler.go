@@ -58,7 +58,7 @@ func NewScheduler(r RedisConnOpt, opts *SchedulerOpts) *Scheduler {
 		panic(fmt.Sprintf("asynq: unsupported RedisConnOpt type %T", r))
 	}
 
-	rdb := rdb.NewRDB(redisClient)
+	rdb := rdb.NewRDB(redisClient, redisPrefixFromConnOpt(r))
 
 	scheduler.rdb = rdb
 	scheduler.client = &Client{broker: rdb, sharedConnection: false}
