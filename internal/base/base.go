@@ -357,7 +357,7 @@ func redisNamespace(prefix string) string {
 	if prefix == "" {
 		return defaultRedisNamespace
 	}
-	return prefix + ":" + defaultRedisNamespace
+	return strings.TrimRight(prefix, ":") + ":" + defaultRedisNamespace
 }
 
 // TaskMessage is the internal representation of a task with additional metadata fields.

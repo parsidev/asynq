@@ -329,11 +329,25 @@ func TestQueueKeyPrefixWithPrefix(t *testing.T) {
 	}
 }
 
+func TestQueueKeyPrefixWithTrailingColonPrefix(t *testing.T) {
+	got := QueueKeyPrefixWithPrefix("tenant1:", "default")
+	want := "tenant1:asynq:{default}:"
+	if got != want {
+		t.Fatalf("QueueKeyPrefixWithPrefix() = %q, want %q", got, want)
+	}
+}
+
 func TestGlobalKeysWithPrefix(t *testing.T) {
 	if got, want := AllQueuesKey("tenant1"), "tenant1:asynq:queues"; got != want {
 		t.Fatalf("AllQueuesKey() = %q, want %q", got, want)
 	}
 	if got, want := CancelChannelKey("tenant1"), "tenant1:asynq:cancel"; got != want {
+		t.Fatalf("CancelChannelKey() = %q, want %q", got, want)
+	}
+	if got, want := AllQueuesKey("tenant1:"), "tenant1:asynq:queues"; got != want {
+		t.Fatalf("AllQueuesKey() = %q, want %q", got, want)
+	}
+	if got, want := CancelChannelKey("tenant1:"), "tenant1:asynq:cancel"; got != want {
 		t.Fatalf("CancelChannelKey() = %q, want %q", got, want)
 	}
 }
